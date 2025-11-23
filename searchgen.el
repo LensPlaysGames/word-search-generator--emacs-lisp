@@ -33,6 +33,9 @@
 (eval-when-compile (require 'cl-lib))
 
 (defvar searchgen--basic-fill-chars
+  "abcdefghijklmnopqrstuvwxyz")
+
+(defvar searchgen--probability-fill-chars
   "aaaaaaaabcccddddeeeeeeeeeeeeffgghhhhhhiiiiiiijkllllmmnnnnnnoooooooppqrrrrrrsssssstttttttttuuuvwwxyyz")
 
 ;; Inspired by https://gist.github.com/purcell/34824f1b676e6188540cdf71c7cc9fc4
@@ -120,7 +123,15 @@
   	   do (push (list x y) the-list)))
     the-list))
 
-(defvar searchgen--direction-functions
+(defvar searchgen--basic-direction-functions
+  (list 'searchgen--right-coordinates 'searchgen--down-coordinates))
+
+(defvar searchgen--intermediate-direction-functions
+  (list 'searchgen--right-coordinates
+        'searchgen--down-coordinates
+        'searchgen--downright-coordinates))
+
+(defvar searchgen--all-direction-functions
   (list 'searchgen--left-coordinates 'searchgen--right-coordinates
         'searchgen--down-coordinates 'searchgen--up-coordinates
         'searchgen--upleft-coordinates 'searchgen--upright-coordinates
@@ -128,11 +139,6 @@
 
 (defun searchgen--valid-at (char x y board board-size)
   "Return true iff character may be placed within board at given position."
-  (message "valid-at (%s,%s): %S (board %S)   %s" x y (char-to-string char) (nth (+ x (* y board-size)) board)
-           (and (>= x 0) (< x board-size)
-                (>= y 0) (< y board-size)
-                (or (eq 'empty (nth (+ x (* y board-size)) board))
-                    (string= (char-to-string char) (nth (+ x (* y board-size)) board)))))
   (and
    ;; position allows
    ;;   0 >= x < board-size
@@ -218,7 +224,7 @@ PDF containing the word search puzzle"
     (dotimes (n (* board-size board-size))
       (insert (nth (+ (% n board-size) (* board-size (/ n board-size))) board))
       (if (= (1- board-size) (% n board-size))
-          (insert "\n\n")
+          (insert "\n")
         (insert " ")))
     (insert "\n")
 
@@ -231,7 +237,7 @@ PDF containing the word search puzzle"
      words)
     (buffer-string)))
 
-(defun searchgen-make (words board-size-offset fill-character-set &optional &key seed)
+(defun searchgen-make (words board-size-offset fill-character-set direction-functions &optional &key seed)
   "'WORDS'   A list of strings which will be placed in the word search, to
 be found.
 'BOARD-SIZE-OFFSET'   A positive value that will be added to the length
@@ -261,17 +267,14 @@ board may be generated across multiple invocations."
         ;; For every word (sorted longest to shortest)...
         (mapcar
          (lambda (word)
-           (message "WORD %s" word)
-           ;; For every position
+           ;; For every position (shuffled)
            (let ((word-placed nil))
              (cl-loop until word-placed
                       for position in (searchgen--seq-shuffle (searchgen--board-positions board-size))
                       do (let
                              ((x (nth 0 position))
                               (y (nth 1 position)))
-                           (message "POSITION (%s,%s)" x y)
-
-                           ;; For every direction
+                           ;; For every direction (shuffled)
                            (mapc
                             (lambda (direction-function)
                               (unless
@@ -286,8 +289,7 @@ board may be generated across multiple invocations."
                                            (searchgen--valid-at char x y board board-size)))
                                        (funcall direction-function word x y)
                                        word)))
-                                  (message "Word valid to be placed in RIGHT direction at (%s,%s): %s"
-                                           x y (unless (memq nil validity-of-positions) t))
+                                  ;; (message "Word valid to be placed in RIGHT direction at (%s,%s): %s" x y (unless (memq nil validity-of-positions) t))
                                   ;; When word /is/ actually valid, perform placement (alter 'board')
                                   (unless (memq nil validity-of-positions)
                                     (seq-mapn
@@ -295,16 +297,16 @@ board may be generated across multiple invocations."
                                        (let ((x1 (nth 0 position))
                                              (y1 (nth 1 position)))
                                          (setf (nth (+ x1 (* y1 board-size)) board) (char-to-string char))
-                                         (message "Placed character %c at coordinates (%s,%s)" char x1 y1)
-                                         (print (searchgen--print-board board board-size))
+                                         ;; (message "Placed character %c at coordinates (%s,%s)" char x1 y1)
+                                         ;; (print (searchgen--print-board board board-size))
                                          ))
                                      (funcall direction-function word x y)
                                      word)
-                                    (message "Placed WORD %s at coordinates (%s,%s)" word x y)
+                                    ;; (message "Placed WORD %s at coordinates (%s,%s)" word x y)
                                     (setf word-placed t)
                                     t)))
                               )
-                            (searchgen--seq-shuffle searchgen--direction-functions))
+                            (searchgen--seq-shuffle direction-functions))
                            ))
              word-placed))
          (searchgen--sort-by-length words))))
@@ -314,6 +316,8 @@ board may be generated across multiple invocations."
 
     ;; With every word placed, fill in the empty positions with characters
     ;; from the fill character set (at random, for now).
+    ;; TODO: I think it may be interesting to pull portions of the input words
+    ;; and try to place those in the empty positions, to have red herrings.
     (setf board
           (mapcar
            (lambda (cell)
@@ -323,28 +327,73 @@ board may be generated across multiple invocations."
                cell))
            board))
 
-    ;; TODO: I think it may be interesting to pull portions of the input words
-    ;; and try to place those in the empty positions, to have red herrings.
+    ;; Return board
+    board))
 
-    (with-current-buffer (find-file-noselect "board.tex")
-      (delete-region (point-min) (point-max))
-      (insert (searchgen--as-latex board board-size words))
-      (save-buffer)
-      (kill-buffer))
+(defun searchgen--to-string (board board-size)
+  "Returns simple string representation of given board."
+  (searchgen--print-board board board-size))
 
-    (with-current-buffer (find-file-noselect "board.txt")
-      (delete-region (point-min) (point-max))
-      (insert (searchgen--as-plaintext board board-size words))
-      (save-buffer)
-      (kill-buffer))
+(defun searchgen--to-latex-file (path board board-size words)
+  "Writes the LaTeX representation of the given puzzle board to a
+file at 'PATH'.
+'PATH'   Passed to 'find-file-noselect' to get a buffer.
+See 'searchgen--as-plaintext'."
+  (with-current-buffer (find-file-noselect path)
+    (delete-region (point-min) (point-max))
+    (insert (searchgen--as-latex board board-size words))
+    (save-buffer)))
 
-    ;; Return board as string
-    (searchgen--print-board board board-size)
+(defun searchgen--to-plaintext-file (path board board-size words)
+  "Writes the plaintext representation of the given puzzle board to a
+file at 'PATH'.
+'PATH'   Passed to 'find-file-noselect' to get a buffer.
+See 'searchgen--as-plaintext'."
+  (with-current-buffer (find-file-noselect path)
+    (delete-region (point-min) (point-max))
+    (insert (searchgen--as-plaintext board board-size words))
+    (save-buffer)))
 
-    ))
+(defun searchgen--to-all (board board-size words)
+  (searchgen--to-plaintext-file "board.txt" board board-size words)
+  (searchgen--to-latex-file "board.tex" board board-size words)
+  (searchgen--to-string board board-size))
 
-;; (searchgen-make '("foo" "boo" "zoo" "moo" "coo") 1 ".")
-;; (searchgen-make '("cat" "dog" "bat" "rat" "bear" "lion") 1 searchgen--basic-fill-chars)
+(defun searchgen-basic (words &optional &key seed)
+  "Limits word direction to RIGHT, and DOWN."
+  (let* ((board-size-offset 1)
+         (board (searchgen-make
+                 words board-size-offset
+                 searchgen--basic-fill-chars
+                 searchgen--basic-direction-functions
+                 :seed seed))
+         (board-size (+ (searchgen--longest words) board-size-offset)))
+    (searchgen--to-all board board-size words)))
+
+(defun searchgen-intermediate (words &optional &key seed)
+  "Limits word direction to RIGHT, DOWN, and DOWN-RIGHT.
+Fill characters roughly weighted based on frequency of appearance in general text."
+  (let* ((board-size-offset 1)
+         (board (searchgen-make
+                 words board-size-offset
+                 searchgen--probability-fill-chars
+                 searchgen--intermediate-direction-functions
+                 :seed seed))
+         (board-size (+ (searchgen--longest words) board-size-offset)))
+    (searchgen--to-all board board-size words)))
+
+(defun searchgen-advanced (words &optional &key seed)
+  (let* ((board-size-offset 1)
+         (board (searchgen-make
+                 words board-size-offset
+                 searchgen--probability-fill-chars
+                 searchgen--all-direction-functions
+                 :seed seed))
+         (board-size (+ (searchgen--longest words) board-size-offset)))
+    (searchgen--to-all board board-size words)))
+
+;; (searchgen-string '("foo" "boo" "zoo" "moo" "coo") 1 ".")
+;; (searchgen-all '("cat" "dog" "bat" "rat" "bear" "lion") 1 searchgen--basic-fill-chars searchgen--all-direction-functions)
 
 (provide 'searchgen)
 
