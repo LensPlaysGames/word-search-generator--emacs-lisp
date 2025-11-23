@@ -359,41 +359,39 @@ See 'searchgen--as-plaintext'."
   (searchgen--to-latex-file "board.tex" board board-size words)
   (searchgen--to-string board board-size))
 
+(defun searchgen--driver (words board-size-offset fill-chars direction-functions &key seed)
+  (let
+      ((board (searchgen-make
+               words board-size-offset
+               fill-chars
+               direction-functions
+               :seed seed))
+       (board-size (+ (searchgen--longest words) board-size-offset)))
+    (searchgen--to-all board board-size words)))
+
 (defun searchgen-basic (words &optional &key seed)
   "Limits word direction to RIGHT, and DOWN."
-  (let* ((board-size-offset 1)
-         (board (searchgen-make
-                 words board-size-offset
-                 searchgen--basic-fill-chars
-                 searchgen--basic-direction-functions
-                 :seed seed))
-         (board-size (+ (searchgen--longest words) board-size-offset)))
-    (searchgen--to-all board board-size words)))
+  (searchgen--driver
+   words 1
+   searchgen--basic-fill-chars
+   searchgen--basic-direction-functions
+   :seed seed))
 
 (defun searchgen-intermediate (words &optional &key seed)
   "Limits word direction to RIGHT, DOWN, and DOWN-RIGHT.
 Fill characters roughly weighted based on frequency of appearance in general text."
-  (let* ((board-size-offset 1)
-         (board (searchgen-make
-                 words board-size-offset
-                 searchgen--probability-fill-chars
-                 searchgen--intermediate-direction-functions
-                 :seed seed))
-         (board-size (+ (searchgen--longest words) board-size-offset)))
-    (searchgen--to-all board board-size words)))
+  (searchgen--driver
+   words 1
+   searchgen--probability-fill-chars
+   searchgen--intermediate-direction-functions
+   :seed seed))
 
 (defun searchgen-advanced (words &optional &key seed)
-  (let* ((board-size-offset 1)
-         (board (searchgen-make
-                 words board-size-offset
-                 searchgen--probability-fill-chars
-                 searchgen--all-direction-functions
-                 :seed seed))
-         (board-size (+ (searchgen--longest words) board-size-offset)))
-    (searchgen--to-all board board-size words)))
-
-;; (searchgen-string '("foo" "boo" "zoo" "moo" "coo") 1 ".")
-;; (searchgen-all '("cat" "dog" "bat" "rat" "bear" "lion") 1 searchgen--basic-fill-chars searchgen--all-direction-functions)
+  (searchgen--driver
+   words 1
+   searchgen--probability-fill-chars
+   searchgen--all-direction-functions
+   :seed seed))
 
 (provide 'searchgen)
 
