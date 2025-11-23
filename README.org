@@ -1,0 +1,29 @@
+* SearchGen
+
+A word search puzzle generator written in Emacs LISP.
+
+Capable of producing TeX such that a PDF may be made, if you are into the physical printing sort of thing. Also can produce plain-text representation.
+
+Capable of altering directions and fill characters.
+
+#+begin_src emacs-lisp
+  (searchgen-advanced '("cat" "dog" "bat" "rat" "bear" "lion"))
+#+end_src
+#+begin_example
+r n r a t
+t a o r p
+g a e i e
+o r c b l
+d o t a b
+#+end_example
+
+#+begin_src emacs-lisp
+  (searchgen-basic '("cat" "dog" "bat" "rat" "bear" "lion"))
+#+end_src
+#+begin_example
+o o o f b
+b a t d e
+c a t o a
+r a t g r
+h l i o n
+#+end_example
