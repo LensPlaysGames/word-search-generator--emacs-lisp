@@ -37,6 +37,12 @@
   "abcdefghijklmnopqrstuvwxyz")
 
 ;; https://en.wikipedia.org/wiki/Letter_frequency
+;; TODO:
+;; - Most common doubled letters: LL EE SS OO TT FF RR NN PP CC
+;; - Most common letter pairs:
+;;   TH HE AN RE ER IN ON AT ND ST ES EN OF TE ED OR TI HI AS TO
+;; It'd be cool to favor those more in the fill character positions. We
+;; may end up accidentally making more actual words this way, though.
 (defvar searchgen--probability-fill-chars
   (concat
    (make-list 82 ?a)
@@ -353,9 +359,6 @@ board may be generated across multiple invocations.
 
   (cl-assert (seqp fill-character-set) t)
 
-  (message "make: seed: %s" seed)
-  (message "make: size: %s" size)
-
   (when (stringp seed)
     (random seed))
 
@@ -397,8 +400,6 @@ See 'searchgen--as-plaintext'."
   (searchgen--to-string board board-size))
 
 (cl-defun searchgen--driver (words fill-chars direction-functions &key seed size)
-  (message "driver: seed: %s" seed)
-  (message "driver: size: %s" size)
   (let
       ((board (searchgen-make words fill-chars
                               direction-functions
