@@ -1,0 +1,16 @@
+c e o n r u t e r t c p
+o e i f o i x l d o u d
+t g f i f r n a d a s a
+a o n o i s s e r p x e
+c o m p i l e r e t o o
+e r l n r o t a r e p o
+t a o s u d r n e u n s
+o r c e t a d d r e s s
+l i r e g e t n i l n e
+t s e e p y t p e i a o
+i n o i t a r a l c e d
+o g s e t a e s p o n i
+
+code  compiler  expression  type  integer
+address  operator  declaration  return  if
+for
