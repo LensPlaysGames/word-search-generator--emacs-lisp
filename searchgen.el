@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "whale"))
+;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "robin" "whale"))
 ;; (searchgen-advanced '("code" "compiler" "expression" "type" "integer" "address" "operator" "declaration" "return" "if" "for") :size 12)
 
 ;;; Code:

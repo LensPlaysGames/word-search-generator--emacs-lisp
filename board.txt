@@ -1,16 +1,15 @@
-c e o n r u t e r t c p
-o e i f o i x l d o u d
-t g f i f r n a d a s a
-a o n o i s s e r p x e
-c o m p i l e r e t o o
-e r l n r o t a r e p o
-t a o s u d r n e u n s
-o r c e t a d d r e s s
-l i r e g e t n i l n e
-t s e e p y t p e i a o
-i n o i t a r a l c e d
-o g s e t a e s p o n i
+g h o r s e r a t h
+o a s i t t t a b a
+d e b e a r o p i g
+h e s o o g h r f f
+h i c e d w e o r e
+r a a o h t p b o h
+b a v a w a i i g n
+e e l u f c e n a o
+e e r o u i w i k i
+b k c u d d e e r l
 
-code  compiler  expression  type  integer
-address  operator  declaration  return  if
-for
+bat  bear  bee  cat  cow
+deer  dog  dove  duck  frog
+goose  horse  kiwi  lion  pig
+rat  robin  whale
