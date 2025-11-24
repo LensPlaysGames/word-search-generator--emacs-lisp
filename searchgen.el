@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "robin" "whale") :size 20)
+;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "robin" "whale"))
 ;; (searchgen-advanced '("code" "compiler" "expression" "type" "integer" "address" "operator" "declaration" "return" "if" "for") :size 12)
 
 ;;; Code:
@@ -202,9 +202,14 @@ PDF containing the word search puzzle"
   (with-temp-buffer
 
     (insert "\\documentclass{article}\n")
+    (insert "\\usepackage[letterpaper]{geometry}\n")
+    (insert "\\usepackage{graphicx}\n")
+    (insert "\\usepackage{adjustbox}\n")
     (insert "\\begin{document}\n")
 
+
     (insert "\\begin{center}\n")
+    (insert "\\begin{adjustbox}{width=\\textwidth}\n")
     (insert "\\begin{tabular}{|")
     (dotimes (_ board-size)
       (insert " c"))
@@ -219,9 +224,11 @@ PDF containing the word search puzzle"
     (insert "\\hline\n")
 
     (insert "\\end{tabular}\n")
+    (insert "\\end{adjustbox}\n")
     (insert "\\end{center}\n")
 
     (insert "\\begin{center}\n")
+    (insert "\\begin{adjustbox}{width=\\textwidth}\n")
     (insert "\\begin{tabular}{ccccc}\n")
     ;; padding := (align - (value % align)) % align
     ;; aligned-value := value + padding
@@ -235,10 +242,9 @@ PDF containing the word search puzzle"
          (insert " & ")))
      words)
 
-
     (insert "\\end{tabular}\n")
+    (insert "\\end{adjustbox}\n")
     (insert "\\end{center}\n")
-
 
     (insert "\\end{document}\n")
     (buffer-string)))
@@ -363,7 +369,7 @@ board may be generated across multiple invocations.
     (random seed))
 
   (searchgen-make--impl
-   (searchgen--sort-by-length words)
+   (searchgen--sort-by-length (mapcar 'downcase words))
    (if size size
      (1+ (searchgen--longest words)))
    fill-character-set
