@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "robin" "whale"))
+;; (searchgen-advanced '("bat" "bear" "bee" "cat" "cow" "deer" "dog" "dove" "duck" "frog" "goose" "horse" "kiwi" "lion" "pig" "rat" "robin" "whale") :size 20)
 ;; (searchgen-advanced '("code" "compiler" "expression" "type" "integer" "address" "operator" "declaration" "return" "if" "for") :size 12)
 
 ;;; Code:
@@ -36,8 +36,35 @@
 (defvar searchgen--basic-fill-chars
   "abcdefghijklmnopqrstuvwxyz")
 
+;; https://en.wikipedia.org/wiki/Letter_frequency
 (defvar searchgen--probability-fill-chars
-  "aaaaaaaabcccddddeeeeeeeeeeeeffgghhhhhhiiiiiiijkllllmmnnnnnnoooooooppqrrrrrrsssssstttttttttuuuvwwxyyz")
+  (concat
+   (make-list 82 ?a)
+   (make-list 15 ?b)
+   (make-list 28 ?c)
+   (make-list 43 ?d)
+   (make-list 127 ?e)
+   (make-list 22 ?f)
+   (make-list 20 ?g)
+   (make-list 61 ?h)
+   (make-list 70 ?i)
+   (make-list 4 ?j)
+   (make-list 7 ?k)
+   (make-list 40 ?l)
+   (make-list 24 ?m)
+   (make-list 67 ?n)
+   (make-list 75 ?o)
+   (make-list 19 ?p)
+   (make-list 2 ?q)
+   (make-list 60 ?r)
+   (make-list 63 ?s)
+   (make-list 91 ?t)
+   (make-list 28 ?u)
+   (make-list 10 ?v)
+   (make-list 24 ?w)
+   (make-list 2 ?x)
+   (make-list 20 ?y)
+   (make-list 1 ?z)))
 
 ;; Inspired by https://gist.github.com/purcell/34824f1b676e6188540cdf71c7cc9fc4
 (defun searchgen--seq-shuffle (seq)
