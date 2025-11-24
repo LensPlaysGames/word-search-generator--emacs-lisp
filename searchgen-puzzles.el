@@ -86,3 +86,7 @@
 (call-process "xelatex" nil nil nil "-jobname=wordsearch_intermediate_titlesforpeople" "./board.tex")
 (searchgen-advanced searchgen-words--titles-for-people :size 8)
 (call-process "xelatex" nil nil nil "-jobname=wordsearch_advanced_titlesforpeople" "./board.tex")
+
+(call-process "pdfunite" nil nil nil "wordsearch_basic*.pdf" "wordsearch_basic.pdf")
+(call-process "pdfunite" nil nil nil "wordsearch_intermediate*.pdf" "wordsearch_intermediate.pdf")
+(call-process "pdfunite" nil nil nil "wordsearch_advanced*.pdf" "wordsearch_advanced.pdf")
