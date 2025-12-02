@@ -203,7 +203,7 @@
      board))
   )
 
-(defun searchgen--as-latex (board board-size words)
+(defun searchgen--as-latex-document-string (inner)
   "Return a string containing LaTeX source (hopefully) of a single-page
 PDF containing the word search puzzle"
   (with-temp-buffer
@@ -213,6 +213,21 @@ PDF containing the word search puzzle"
     (insert "\\usepackage{graphicx}\n")
     (insert "\\usepackage{adjustbox}\n")
     (insert "\\begin{document}\n")
+
+    (insert inner)
+
+    (insert "\\end{document}\n")
+    (buffer-string)))
+
+(defun searchgen--as-latex-document (board board-size words)
+  "Return a string containing LaTeX source (hopefully) of a single-page
+PDF containing the word search puzzle"
+  (searchgen--as-latex-document-string (searchgen--as-latex board board-size words)))
+
+(defun searchgen--as-latex (board board-size words)
+  "Return a string containing LaTeX source (hopefully) of a single-page
+of a PDF containing the word search puzzle."
+  (with-temp-buffer
 
     (insert "\\begin{center}\n")
     (insert "\\begin{adjustbox}{width=\\textwidth}\n")
@@ -252,7 +267,6 @@ PDF containing the word search puzzle"
     (insert "\\end{adjustbox}\n")
     (insert "\\end{center}\n")
 
-    (insert "\\end{document}\n")
     (buffer-string)))
 
 (defun searchgen--as-plaintext (board board-size words)
@@ -418,7 +432,7 @@ file at 'PATH'.
 See 'searchgen--as-plaintext'."
   (with-current-buffer (find-file-noselect path)
     (delete-region (point-min) (point-max))
-    (insert (searchgen--as-latex board board-size words))
+    (insert (searchgen--as-latex-document board board-size words))
     (save-buffer)))
 
 (defun searchgen--to-plaintext-file (path board board-size words)

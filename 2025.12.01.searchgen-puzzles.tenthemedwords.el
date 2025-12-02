@@ -1,23 +1,49 @@
 (require 'searchgen)
 
-(defun make-pdf (words theme-string size difficulty-level)
-  "'theme-string' is a string describing the list of words.
-'difficulty-level' is one of 'basic', 'intermediate', or 'advanced'."
-  (cond
-   ((eq 'basic difficulty-level)
-    (searchgen-basic words :min-size size :max-size size))
-   ((eq 'intermediate difficulty-level)
-    (searchgen-intermediate words :min-size size :max-size size))
-   ((eq 'advanced difficulty-level)
-    (searchgen-advanced words :min-size size :max-size size))
-   (t (error "Invalid value for 'difficulty-level'")))
-  (call-process "xelatex" nil nil nil (format "-jobname=%s_%s" theme-string difficulty-level) "./board.tex"))
+(defvar basic-sources nil)
+(defvar intermediate-sources nil)
+(defvar advanced-sources nil)
 
-(defmacro make-pdf--all (words theme-string size)
-  `(progn
-     (make-pdf ,words ,theme-string ,size 'basic)
-     (make-pdf ,words ,theme-string ,size 'intermediate)
-     (make-pdf ,words ,theme-string ,size 'advanced)))
+(setf basic-sources nil)
+(setf intermediate-sources nil)
+(setf advanced-sources nil)
+
+(defun make-pdf (words theme-string size)
+  "'theme-string' is a string describing the list of words."
+  (push
+   (searchgen--as-latex
+    (searchgen-make
+     words
+     searchgen--basic-fill-chars
+     searchgen--basic-direction-functions
+     :min-size size
+     :max-size size)
+    size
+    words)
+   basic-sources)
+  (push
+   (searchgen--as-latex
+    (searchgen-make
+     words
+     searchgen--probability-fill-chars
+     searchgen--intermediate-direction-functions
+     :min-size size
+     :max-size size)
+    size
+    words)
+   intermediate-sources)
+  (push
+   (searchgen--as-latex
+    (searchgen-make
+     words
+     searchgen--probability-fill-chars
+     searchgen--all-direction-functions
+     :min-size size
+     :max-size size)
+    size
+    words)
+   advanced-sources)
+  t)
 
 (defun unite-pdfs--paths (theme-strings)
   "Return a list of paths to PDFs produced by 'make-pdf'.
@@ -30,15 +56,9 @@
                 theme-strings)))
     (flatten-list
      (list
-      (mapcar
-       (lambda (pathlist) (nth 0 pathlist))
-       paths)
-      (mapcar
-       (lambda (pathlist) (nth 1 pathlist))
-       paths)
-      (mapcar
-       (lambda (pathlist) (nth 2 pathlist))
-       paths)))))
+      (mapcar (lambda (pathlist) (nth 0 pathlist)) paths)
+      (mapcar (lambda (pathlist) (nth 1 pathlist)) paths)
+      (mapcar (lambda (pathlist) (nth 2 pathlist)) paths)))))
 
 (defun unite-pdfs--command-args (theme-strings outpath)
   "'theme-strings' should contain all 'theme-string's
@@ -54,40 +74,54 @@
   (eval `(call-process "pdfunite" nil nil nil ,@(unite-pdfs--command-args theme-strings outpath))))
 (unite-pdfs '(common conspiracies crass_bodyparts roadways) "searches.pdf")
 
-;; "The ten most common words in the English language."
-(make-pdf--all
- '("the" "be" "to" "of" "and" "a" "in" "that" "i" "it")
- 'common
- 5)
-
-(make-pdf--all
+;; Conspiracy theories.
+(make-pdf
  '("nineeleven" "moonlanding" "areafiftyone" "flatearth" "paulisdead"
    "princessdiana" "jfktwoshooters" "aliensinroswell" "birdsarentreal")
  'conspiracies
  15)
 
-(make-pdf--all
+;; Naughty!
+(make-pdf
  '("boobs" "butts" "dicks" "pussies" "holes"
    "cocks" "tits" "thicc" "coochie" "cooter")
  'crass_bodyparts
  10)
 
-(make-pdf--all
+;; Drugs!
+(make-pdf
  '("weed" "ecstasy" "cocaine" "nicotine" "alcohol"
    "booze" "percocet" "valium" "vicodin" "caffeine")
  'drugs
  10)
 
-(make-pdf--all
+;; Cutesie words, or something.
+(make-pdf
  '("bonny" "love" "wifey" "boo" "rideordie"
    "cutie" "adorable" "marriage" "pretty" "beautiful")
  'cutesie
  10)
 
-(make-pdf--all
+;; Non-proper names of roadways.
+(make-pdf
  '("avenue" "boulevard" "culdesac" "drive" "freeway"
    "highway" "place" "road" "street" "way")
  'roadways
  10)
 
-(unite-pdfs '(common conspiracies crass_bodyparts drugs cutesie roadways) "searches.pdf")
+;; The ten most common words in the English language.
+(make-pdf
+ '("the" "be" "to" "of" "in" "that" "have" "it" "for" "not")
+ 'common
+ 5)
+
+(with-current-buffer (find-file-noselect "./searches.tex")
+  (erase-buffer)
+  (insert
+   (searchgen--as-latex-document-string
+    (concat
+     (mapconcat 'identity basic-sources)
+     (mapconcat 'identity intermediate-sources)
+     (mapconcat 'identity advanced-sources))))
+  (save-buffer))
+(call-process "xelatex" nil nil nil "./searches.tex")
