@@ -7,14 +7,14 @@ Capable of producing TeX such that a PDF may be made, if you are into the physic
 Capable of altering directions and fill characters.
 
 #+begin_src emacs-lisp
-  (searchgen-advanced '("cat" "dog" "bat" "rat" "bear" "lion") :size 4)
+  (searchgen-advanced '("cat" "dog" "bat" "rat" "bear" "lion" "tiger") :max-size 5)
 #+end_src
 #+begin_example
-r n r a t
-t a o r p
-g a e i e
-o r c b l
-d o t a b
+r a e b l
+r e g i t
+a d t a c
+t n o i l
+t a b g o
 #+end_example
 
 #+begin_src emacs-lisp

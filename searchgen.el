@@ -2,7 +2,7 @@
 
 ;; Author: Lens_r
 ;; Maintainer: Lens_r
-;; Version: 0.0.1
+;; Version: 0.1.0
 ;; Package-Requires: ((emacs))
 ;; Homepage: homepage
 ;; Keywords: game, play, word search
@@ -32,6 +32,13 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl-lib))
+
+(defcustom searchgen--retry-limit
+  10
+  "The amount of times to retry putting words on the board once the
+ maximum size has been reached."
+  :type 'integer
+  :group 'searchgen)
 
 (defvar searchgen--basic-fill-chars
   "abcdefghijklmnopqrstuvwxyz")
@@ -207,7 +214,6 @@ PDF containing the word search puzzle"
     (insert "\\usepackage{adjustbox}\n")
     (insert "\\begin{document}\n")
 
-
     (insert "\\begin{center}\n")
     (insert "\\begin{adjustbox}{width=\\textwidth}\n")
     (insert "\\begin{tabular}{|")
@@ -269,11 +275,14 @@ PDF containing the word search puzzle"
      words)
     (buffer-string)))
 
-(cl-defun searchgen-make--impl (words board-size fill-character-set direction-functions &optional &key seed)
+(cl-defun searchgen-make--impl (words board-size fill-character-set direction-functions depth &optional &key seed max-board-size)
   (cl-assert (integerp board-size) t)
   (cl-assert (>= board-size 0) t)
 
   (cl-assert (seqp fill-character-set) t)
+
+  (when max-board-size
+    (cl-assert (<= board-size max-board-size)))
 
   (let*
       ((board (make-list (* board-size board-size) 'empty))
@@ -327,8 +336,25 @@ PDF containing the word search puzzle"
          words)))
 
     (if (memq nil words-placed)
-        ;; Recurse!
-        (searchgen-make--impl words (1+ board-size) fill-character-set direction-functions :seed seed)
+        ;; Board invalid, could not place words successfully.
+        (if (and
+             (and
+              max-board-size
+              (>= board-size max-board-size))
+             (>= depth searchgen--retry-limit))
+            (error "Recurse limit %d reached at maximum board size"
+                   searchgen--retry-limit)
+          ;; Recurse!
+          (searchgen-make--impl
+           words
+           (if max-board-size
+               (min max-board-size (1+ board-size))
+             (1+ board-size))
+           fill-character-set
+           direction-functions
+           (1+ depth)
+           :seed seed
+           :max-board-size max-board-size))
       (progn
         ;; With every word placed, fill in the empty positions with characters
         ;; from the fill character set (at random, for now).
@@ -347,7 +373,7 @@ PDF containing the word search puzzle"
         board
         ))))
 
-(cl-defun searchgen-make (words fill-character-set direction-functions &optional &key seed size)
+(cl-defun searchgen-make (words fill-character-set direction-functions &optional &key seed min-size max-size)
   "'WORDS'   A list of strings which will be placed in the word search, to
 be found.
 'FILL-CHARACTER-SET'   A string, each character of which may be used to
@@ -361,7 +387,9 @@ were to be placed in that direction.
 OPTIONAL:
 ':seed'   A string that is passed to 'random', to make it so the same
 board may be generated across multiple invocations.
-':size'   An integer that sets the minimum size of the given puzzle board."
+':min-size'   An integer that sets the minimum size of the given puzzle board.
+':max-size'   An integer that sets the maximum size of the given puzzle board;
+ once at this size, will retry 'searchgen--retry-limit' times before emitting an error."
 
   (cl-assert (seqp fill-character-set) t)
 
@@ -370,11 +398,14 @@ board may be generated across multiple invocations.
 
   (searchgen-make--impl
    (searchgen--sort-by-length (mapcar 'downcase words))
-   (if size size
-     (1+ (searchgen--longest words)))
+   (cond
+    (min-size)
+    ((searchgen--longest words)))
    fill-character-set
    direction-functions
-   :seed seed))
+   1
+   :seed seed
+   :max-board-size max-size))
 
 (defun searchgen--to-string (board board-size)
   "Returns simple string representation of given board."
@@ -405,24 +436,40 @@ See 'searchgen--as-plaintext'."
   (searchgen--to-latex-file "board.tex" board board-size words)
   (searchgen--to-string board board-size))
 
-(cl-defun searchgen--driver (words fill-chars direction-functions &key seed size)
+(cl-defun searchgen--driver (words fill-chars direction-functions &key seed min-size max-size)
+  (when max-size
+    (cl-assert (>= max-size (searchgen--longest words))
+               nil
+               "Maximum size, %d, is less than the length of the longest word, %d."
+               max-size (searchgen--longest words)))
+
+  (when (and min-size max-size)
+    (cl-assert (>= max-size min-size)
+               nil
+               "Given maximum size, %d, is less than the given minimum size, %d."
+               max-size min-size))
+
   (let
-      ((board (searchgen-make words fill-chars
-                              direction-functions
-                              :seed seed
-                              :size size)))
+      ((board (searchgen-make
+               words
+               fill-chars
+               direction-functions
+               :seed seed
+               :min-size min-size
+               :max-size max-size)))
     (searchgen--to-all board (cl-isqrt (length board)) words)))
 
-(cl-defun searchgen-basic (words &optional &key seed size)
+(cl-defun searchgen-basic (words &optional &key seed min-size max-size)
   "Limits word direction to RIGHT, and DOWN."
   (searchgen--driver
    words
    searchgen--basic-fill-chars
    searchgen--basic-direction-functions
    :seed seed
-   :size size))
+   :min-size min-size
+   :max-size max-size))
 
-(cl-defun searchgen-intermediate (words &optional &key seed size)
+(cl-defun searchgen-intermediate (words &optional &key seed min-size max-size)
   "Limits word direction to RIGHT, DOWN, and DOWN-RIGHT.
 Fill characters roughly weighted based on frequency of appearance in general text."
   (searchgen--driver
@@ -430,20 +477,18 @@ Fill characters roughly weighted based on frequency of appearance in general tex
    searchgen--probability-fill-chars
    searchgen--intermediate-direction-functions
    :seed seed
-   :size size))
+   :min-size min-size
+   :max-size max-size))
 
-(cl-defun searchgen-advanced (words &optional &key seed size)
+(cl-defun searchgen-advanced (words &optional &key seed min-size max-size)
   "- All directions possible:
 LEFT, RIGHT, UP, DOWN, UP-LEFT, UP-RIGHT, DOWN-LEFT, DOWN-RIGHT.
 - Fill characters roughly weighted based on frequency of appearance in
 general text. That is, `e` shows up more than `z`, for example.
-- With no size given, set minimum size to at least double the length of
-the longest word.
 - Alters fill characters to only contain characters that are in the words
 you are trying to find. If there is no `z` in any input word, it won't
 be in the board.
 "
-  (unless size (setf size (* 2 (searchgen--longest words))))
   (let*
       ((words-text (mapconcat 'identity words))
        (fill-chars (seq-filter
@@ -455,7 +500,8 @@ be in the board.
      fill-chars
      searchgen--all-direction-functions
      :seed seed
-     :size size)))
+     :min-size min-size
+     :max-size max-size)))
 
 (provide 'searchgen)
 
